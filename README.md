@@ -9,8 +9,8 @@ Given the nature of the business model of this automation language:
 - no CST or AST are provided to users
 - no existing independent compiler/translators that can be used in pair with the debugger of an IDE to debug the language easily at runtime / support major refactorings / etc.
   
-I was interested in making some first steps in an "independent" tool for static analysis of the language to support following steps - 
-- auto formatting
+I was interested in making some first steps in an "independent" tool for static analysis of the language to support the following steps / developer tools - 
+- formatting
 - static analysis 
 - refactoring
 
