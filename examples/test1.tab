@@ -1,0 +1,216 @@
+
+BEGIN_GUI_DESCR
+	RADIOBUTTON_PARAM INTEGER tracking_type time_per_line time_per_tab program_lines_run call_graph_linear identify_all_tab_for_pkg identify_all_static_data_structures
+END_GUI_DESCR 
+
+BEGIN_ASM_DESCR
+
+	CONFIG_ELEM 
+
+	! -----------------------------------------------------------------------------------------------------
+	!  DECLARATIONS
+	! ----------------------------------------------------------------------------------------------------- 
+	GET_ENVIRONMENT_VARIABLE "ComSpec" ComSpec
+	DECLARE_VARIABLE STRING cmd_arg ""
+	DECLARE_VARIABLE BOOL time_logging_config_already_set
+	DECLARE_VARIABLE BOOL TIME_PROFILING TRUE  
+	DECLARE_ARRAY arrayButtons
+
+	! -----------------------------------------------------------------------------------------------------
+	!  CHECK FOR SA CONFIG - DEBUG
+	! ----------------------------------------------------------------------------------------------------- 
+	DECLARE_VARIABLE STRING config_path
+
+	RESOLVE_PATH lib:\\ root_path
+	REG_EXP_REPLACE root_path "(.*)\\\\component_engine" "$1" root_path
+
+	GET_ENVIRONMENT_VARIABLE SAS_USER_CONFIG_PATH user_paths 
+
+	! -----------------------------------------------------------------------------------------------------
+	!  IF THE USER IS USING SAS_USER_CONFIG_PATH - FIND CURRENT CFG
+	! ----------------------------------------------------------------------------------------------------- 
+	IF PARAM_VALID user_paths
+
+		SPLIT_STRING user_paths SA_CONFIG_PATHS SPLIT_CHAR ";"
+		! PRINT "SA_CONFIG_PATHS: %" SA_CONFIG_PATHS
+
+		FOR A_PATH REF ARRAY SA_CONFIG_PATHS
+
+			IF A_PATH == ""
+				BREAK
+			END_IF 
+			! PRINT "READING A_PATH: %" A_PATH
+			CLEAR_CATCH_ERROR
+			BEGIN_CATCH_ERROR
+				FILE_OPEN A_PATH+\+"options.cfg" "r" config_file_handle
+				DECLARE_VARIABLE STRING library_path_line
+				WHILE NOT FILE_END config_file_handle
+					FILE_READ_LINE config_file_handle line  
+					IF strfind(line,"LIBRARY_PATH") > -1 
+						library_path_line = line
+						! PRINT "library_path_line: %" library_path_line
+						FILE_CLOSE config_file_handle
+						BREAK
+					END_IF 
+				END_WHILE 
+				IF strfind(library_path_line,root_path) > -1
+					CONFIG_PATH = A_PATH+\+"options.cfg"
+					BREAK 
+				END_IF 
+			END_CATCH_ERROR
+
+		
+		END_FOR 
+
+
+			CLEAR_CATCH_ERROR
+			BEGIN_CATCH_ERROR
+				FILE_OPEN CONFIG_PATH "r" config_file_handle
+				DECLARE_VARIABLE STRING library_path_line
+				WHILE NOT FILE_END config_file_handle
+					FILE_READ_LINE config_file_handle line  
+					! PRINT "line: %" line
+					IF strfind(line,"DEBUG_TAB_PERFORMANCE 0") > -1 
+						time_logging_config_already_set = TRUE
+						FILE_CLOSE config_file_handle
+						BREAK
+					END_IF 
+				END_WHILE 
+			END_CATCH_ERROR
+
+
+		IF PARAM_VALID config_path AND NOT PARAM_VALID time_logging_config_already_set 
+			PRINT "FOUND CONFIG PATH: %" config_path
+			cmd_arg = "/c start \"notepad++.exe\" "+"\""+config_path+"\""
+			PLUGIN HIDE SYNC ComSpec cmd_arg	
+			DECLARE_ARRAY arrayButtons
+			ADD_ARRAY_ELEM arrayButtons "EXIT"
+			MESSAGE_BOX_EX QUESTION "USER INPUT" "ADD DEBUG_TAB_PERFORMANCE 0.  OPEN AND CLOSE CONFIG." arrayButtons paramChoice
+			PRINT "ADD DEBUG_TAB_PERFORMANCE 0.  OPEN AND CLOSE CONFIG."
+			EXIT
+		END_IF 
+	ELSE  
+		! TODO: FOR USERS WITHOUT SAS_USER_CONFIG_PATH - DEFAULT CFG - UNDER LIB INSTALLATION IN CONFIGURATION\options.cfg
+	END_IF 
+
+
+	
+	! -----------------------------------------------------------------------------------------------------
+	!  CLEAN TRAIL FILES
+	! ----------------------------------------------------------------------------------------------------- 
+	PURGE PURGEMODE NO_INDEX .
+
+	! IDENTIFY TRAIL OF DESIRED FOCUS
+	cmd_arg = "/c dir *trail.txt* /B"
+	PLUGIN CAPTURE_OUTPUT working_dir_contents HIDE SYNC ComSpec cmd_arg	
+	PRINT "Trail Files Found in WD: %" working_dir_contents
+	GET_ARRAY_ELEM working_dir_contents 0 FIRST_ITEM
+	IF strfind(first_item,"File Not Found") > -1 !OR NOT PARAM_VALID first_item OR first_item == ""
+		MESSAGE_BOX "TRAIL FILE NOT FOUND.\nPLEASE RESET WORKING DIR."
+		EXIT
+	END_IF 
+
+
+	! MAKE A PATH 
+	GET_ARRAY_SIZE working_dir_contents number_trail
+	GET_ARRAY_ELEM working_dir_contents number_trail-1 trail_name 
+	RESOLVE_PATH ".\\"+trail_name TRAIL_FILE_PATH
+	RESOLVE_PATH "." WORKING_DIR
+	PRINT "TRAIL_FILE_PATH: %" TRAIL_FILE_PATH
+
+
+	! ADD TIME STRING TO TRAIL FILE - ALLOWING FOCUS ON CURRENT INFO ONLY (OF CHOSEN TAB)
+	GET_TIME_STRING "%c" time_string
+	PRINT "time_string: %" time_string
+	time_string = strreplace(time_string," ","_",TRUE)
+	WRITE_TRAIL_MESSAGE "TIME_MONITORING" time_string
+	
+
+	! -----------------------------------------------------------------------------------------------------
+	!  CALL THE PROGRAM OF CHOICE
+	! ----------------------------------------------------------------------------------------------------- 
+	CHOOSE_FILE lib:\ "tab" tab_file_to_monitor
+	CALL tab_file_to_monitor
+
+	! -----------------------------------------------------------------------------------------------------
+	!  DECLARATIONS BEFORE POWERSHELL
+	! ----------------------------------------------------------------------------------------------------- 
+	ENABLE_PRINT_MESSAGE TRUE  
+	GET_ENVIRONMENT_VARIABLE "ComSpec" ComSpec
+	DECLARE_VARIABLE STRING cmd_arg ""
+	PARSE_FILE_NAME tab_file_to_monitor PATH TAB EXT 
+	PRINT "MADE IT PAST CHOSEN TAB FILE: %" TAB+"."+EXT
+
+
+	! -----------------------------------------------------------------------------------------------------
+	!  PROCESS THE TRAIL FILE
+	! ----------------------------------------------------------------------------------------------------- 
+	RESOLVE_PATH ".\\trail_in_work.txt" trail_file_copy
+	PRINT "trail_file_copy: %" trail_file_copy
+	ENABLE_PRINT_MESSAGE TRUE
+	CLEAR_CATCH_ERROR
+	BEGIN_CATCH_ERROR
+		DELETE_FILE trail_file_copy
+	END_CATCH_ERROR
+	IF ERROR  	
+		PRINT MESSAGE_SYMBOL WARNING "CANNOT DELETE TRAIL FILE COPY?"
+	END_IF 
+
+	COPY_FILE TRAIL_FILE_PATH "trail_in_work.txt"
+	
+	PRINT "TIME LOGGING: ******************************************************"
+	RESOLVE_PATH ".\profiling.txt" output_file
+	IF tracking_type == 0 
+		RESOLVE_PATH lib:software\time_profiling_line.ps1 time_monitoring_ps1
+		cmd_arg = "/c powershell "+time_monitoring_ps1+" \""+trail_file_copy+"\" \""+time_string+"\" \""+output_file+"\" "
+		PRINT "cmd_arg: %" cmd_arg
+		PLUGIN HIDE ASYNC ComSpec cmd_arg	
+	ELSE_IF tracking_type == 1
+		RESOLVE_PATH lib:software\time_profiling_tab.ps1 time_monitoring_ps1
+		cmd_arg = "/c powershell "+time_monitoring_ps1+" \""+trail_file_copy+"\" \""+time_string+"\" \""+output_file+"\" "
+		PRINT "cmd_arg: %" cmd_arg
+		PLUGIN HIDE ASYNC ComSpec cmd_arg	
+	ELSE_IF tracking_type == 2
+		RESOLVE_PATH lib:software\job_line_profiling.ps1 job_monitoring_ps1
+		cmd_arg = "/c powershell "+job_monitoring_ps1+" \""+trail_file_copy+"\" \""+time_string+"\" \""+output_file+"\" "
+		PRINT "cmd_arg: %" cmd_arg
+		PLUGIN HIDE ASYNC ComSpec cmd_arg	
+	ELSE_IF tracking_type == 3
+		RESOLVE_PATH lib:software\call_graph_linear.ps1 call_graph_ps1
+		cmd_arg = "/c powershell "+call_graph_ps1+" \""+trail_file_copy+"\" \""+time_string+"\" \""+output_file+"\" "
+		PRINT "cmd_arg: %" cmd_arg
+		PLUGIN HIDE ASYNC ComSpec cmd_arg	
+
+	ELSE_IF tracking_type == 4
+		RESOLVE_PATH lib:software\distinct_tab_for_pkg.ps1 distinct_tab_for_pkg_ps1
+		cmd_arg = "/c powershell "+distinct_tab_for_pkg_ps1+" \""+trail_file_copy+"\" \""+time_string+"\" \""+output_file+"\" "
+		PRINT "cmd_arg: %" cmd_arg
+		PLUGIN HIDE ASYNC ComSpec cmd_arg	
+
+	ELSE_IF tracking_type == 5
+
+		RESOLVE_PATH lib:software\distinct_tab_for_pkg.ps1 distinct_tab_for_pkg_ps1
+		cmd_arg = "/c powershell "+distinct_tab_for_pkg_ps1+" \""+trail_file_copy+"\" \""+time_string+"\" \""+output_file+"\" "
+		PRINT "cmd_arg: %" cmd_arg
+		PLUGIN HIDE SYNC ComSpec cmd_arg	
+
+		PRINT "PROGRAMS IDENTIFIED - MOVING ON TO DATA STRUCTURE PARSER"
+		RESOLVE_PATH lib:software\antlr4-parse.exe parser 
+		RESOLVE_PATH lib:files\sa_data_structures.g4 grammar 
+		RESOLVE_PATH lib:software\execute_data_struct_parse.ps1 final_parsing_tool 
+
+		RESOLVE_PATH @".\final_parsed_data_structs.txt" parsed_data_structs_file 
+		cmd_arg = "/c powershell "+ final_parsing_tool + " \""+ parser + "\" \""+ grammar + "\" \""+ output_file + "\" \""+ parsed_data_structs_file + "\""
+		PRINT "cmd_arg: %" cmd_arg
+		PLUGIN HIDE ASYNC ComSpec cmd_arg
+
+		PRINT "PARSER LAUNCHED ASYNC - PROGRAM COMPLETE"
+
+	END_IF 
+	
+
+	PRINT MESSAGE_SYMBOL INFO "FILE SHOULD OPEN IN DEFAULT APPLICATION...."
+
+
+
+END_ASM_DESCR 
