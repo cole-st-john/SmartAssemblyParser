@@ -14,7 +14,7 @@ I was interested in making some first steps in an "independent" tool for static 
 - static analysis 
 - refactoring
 
-This project currently contains a functioning, if incomplete, grammar for .TAB files and can extra all of the data structure names from the logic portion of the programs (ASM_DESCR BLOCK).
+This project currently contains a functioning, if incomplete, grammar for .TAB files and can extra all of the data structure names from the logic portion of the programs (ASM_DESCR block).
 
 For ambitious developers, I hope this might help in making further steps in developer tools for the language. 
 
