@@ -2,7 +2,7 @@
 
 ## History 
 
-The goal of this project was an exercise in understanding the structure of the proprietary language Smartassembly (*.tab).
+The goal of this project was an exercise in understanding the structure of the proprietary language Smartassembly (*.tab), as well as some getting some feel for [ANTLR4](https://www.antlr.org/).
 
 Given the nature of the business model of this automation language:
 - no formal language specification is available
