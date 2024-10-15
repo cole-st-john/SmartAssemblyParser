@@ -40,7 +40,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Data structure extractor for .tab files."
     )
-    parser.add_argument("inpath", type=str, help="The path to the .tab file to format")
+    parser.add_argument("inpath", type=str, help="The path to the .tab file to process")
     parser.add_argument("outpath", type=str, help="The path to write output to")
     args = parser.parse_args()
     if not all([args.inpath, args.outpath]):
