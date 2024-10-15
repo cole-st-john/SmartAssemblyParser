@@ -19,7 +19,7 @@ This project currently contains a functioning, if incomplete, grammar for .TAB f
 For ambitious developers, I hope this might help in making further steps in developer tools for the language. 
 
 
-### Installing Dependencies
+## Installing Dependencies
 ``
 pip install -r requirements.txt
 ``
