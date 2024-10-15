@@ -18,6 +18,14 @@ This project currently contains a functioning, if incomplete, grammar for .TAB f
 
 For ambitious developers, I hope this might help in making further steps in developer tools for the language. 
 
+## Current functionality
+
+Extracting Data Structure Names
+| Code | Data Structures|
+|--------- |---------|
+| ![Code](/imgs/code.gif) | ![Data Structures](/imgs/data_struct_identifiers.gif)|
+
+
 
 ## Installing Dependencies
 ``
