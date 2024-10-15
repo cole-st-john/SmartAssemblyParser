@@ -41,7 +41,7 @@ pip install -r requirements.txt
 
 ### Want To Further Develop The Grammar? 
 
-- Modify grammar file \parser_generator\SADATA.g4  - see [antlr.org](https://www.antlr.org/) for more details.
+- Modify grammar file:  \parser_generator\SADATA.g4  - see [antlr.org](https://www.antlr.org/) for more details.
 
 ### Want To Generate New Parser From Grammar?  
 
