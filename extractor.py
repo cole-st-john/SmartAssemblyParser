@@ -1,4 +1,6 @@
 """
+Data structure extractor for .tab files.
+
 Usage: python.exe -m extractor <Input Path(.tab)> <Output Path(.txt/.tab)>
 
 **  Example Usage: python.exe -m extractor "examples\\test1.tab" "out\\test1.tab"  **
@@ -16,6 +18,7 @@ from manually_modified_parser.SADATALexer import SADATALexer
 from manually_modified_parser.SADATAParser import SADATAParser
 from extracted_sa_listener import ExtractedSAListener
 import argparse
+import textwrap
 
 
 def sa_data_parse(in_path, out_stream):
@@ -26,19 +29,31 @@ def sa_data_parse(in_path, out_stream):
     parser = SADATAParser(stream)
     tree = parser.program()  # the first rule
     actionable_parsed = ExtractedSAListener(out_stream)
-    walker = ParseTreeWalker()  # future
-    walker.walk(actionable_parsed, tree)  # future
-
-
-# Example Usage
-if "__name__" == "__main__":
-    sa_data_parse(r"examples\test1.tab", r"out\test1.tab")
+    walker = ParseTreeWalker()
+    walker.walk(actionable_parsed, tree)
 
 
 def main():
     """Main script function, providing a simple CLI for the functionality (extracting data structures)."""
     parser = argparse.ArgumentParser(
-        description="Data structure extractor for .tab files."
+        prog="",
+        usage="",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=textwrap.dedent("""
+            Data structure extractor for .tab files.
+            
+            Extracts data structure names from SmartAssembly (.tab), into a standardised human readable format.
+            
+            python.exe -m extractor <Input Path(.tab)> <Output Path(.txt/.tab)>
+            
+        """),
+        epilog=textwrap.dedent("""
+            Example Usage: python.exe -m extractor "examples\\test1.tab" "out\\test1.tab" 
+            
+            This script does not do any validation.  Invalid syntax of the arguments or the the input file will result in an error.
+
+            ANTLR4-based CLI tool for .tab files - providing a basis for deeper Smartassembly automation static analysis and coding tools.
+        """),
     )
     parser.add_argument("inpath", type=str, help="The path to the .tab file to process")
     parser.add_argument("outpath", type=str, help="The path to write output to")
